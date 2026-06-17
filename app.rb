@@ -16,8 +16,7 @@ RubyLLM.configure do |config|
 end
 
 get '/' do
-  token = request.env['HTTP_X_SECRET_TOKEN'].to_s
-  unless Rack::Utils.secure_compare(token, ENV['YANN_SERVER_SECRET'])
+  unless Rack::Utils.secure_compare(params[:token].to_s, ENV['YANN_SERVER_SECRET'])
     content_type :json
     halt 403, { error: 'Not authorized.' }.to_json
   end
