@@ -1,20 +1,19 @@
-# myapp.rb
 require 'sinatra'
 require 'ruby_llm'
 require 'open-uri'
-require "nokogiri"
+require 'nokogiri'
 require 'dotenv/load' if ENV['RACK_ENV'] == 'development'
 
-# Configure RubyLLM with your API key
+raise 'ANTHROPIC_API_KEY is not set' if ENV['ANTHROPIC_API_KEY'].nil?
+
 CACHE_TTL = 3600
 $cache = { data: nil, fetched_at: nil }
 
 RubyLLM.configure do |config|
   config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']
-  config.default_model = 'claude-sonnet-4-6' 
+  config.default_model = 'claude-sonnet-4-6'
 end
 
-# Define a simple route to handle AI requests
 get '/' do
   if $cache[:data] && Time.now - $cache[:fetched_at] < CACHE_TTL
     content_type :json
@@ -28,9 +27,10 @@ get '/' do
   rescue OpenURI::HTTPError, SocketError, Timeout::Error => e
     halt 502, content_type(:json) && { error: "Failed to fetch ARISS data: #{e.message}" }.to_json
   end
-  html_doc = Nokogiri::HTML.parse(html_file)
 
-  ariss_events_text =  html_doc.search("h2 + div.paragraph").text.strip
+  html_doc = Nokogiri::HTML.parse(html_file)
+  ariss_events_text = html_doc.search('h2 + div.paragraph').text.strip
+  halt 502, content_type(:json) && { error: 'Could not parse ARISS page — selector returned no content' }.to_json if ariss_events_text.empty?
 
   prompt = <<~PROMPT
     You are a JSON API that extracts ISS SSTV event data from the ARISS website.
@@ -67,8 +67,6 @@ get '/' do
   PROMPT
 
   chat = RubyLLM.chat
-  
-  # Send a prompt and get the response
   response = chat.ask prompt
 
   content_type :json
