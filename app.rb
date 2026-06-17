@@ -15,7 +15,11 @@ end
 get '/' do
   ariss_url = 'https://www.ariss.org/upcoming-sstv-events.html'
 
-  html_file = URI.parse(ariss_url).read
+  html_file = begin
+    URI.parse(ariss_url).read
+  rescue OpenURI::HTTPError, SocketError, Timeout::Error => e
+    halt 502, content_type(:json) && { error: "Failed to fetch ARISS data: #{e.message}" }.to_json
+  end
   html_doc = Nokogiri::HTML.parse(html_file)
 
   ariss_events_text =  html_doc.search("h2 + div.paragraph").text.strip
@@ -59,7 +63,11 @@ get '/' do
   # Send a prompt and get the response
   response = chat.ask prompt
 
-  # Return the LLM response as text
   content_type :json
-  response.content
+  begin
+    JSON.parse(response.content)
+    response.content
+  rescue JSON::ParserError
+    halt 500, { error: 'LLM returned invalid JSON' }.to_json
+  end
 end
