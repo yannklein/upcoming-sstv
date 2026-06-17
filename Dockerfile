@@ -1,5 +1,8 @@
 FROM ruby:3.3.5-slim
 
+ENV RACK_ENV=production
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libxml2-dev libxslt-dev libyaml-dev && \
     rm -rf /var/lib/apt/lists/*
