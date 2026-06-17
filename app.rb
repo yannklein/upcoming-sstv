@@ -5,6 +5,7 @@ require 'nokogiri'
 require 'dotenv/load' if ENV['RACK_ENV'] == 'development'
 
 raise 'ANTHROPIC_API_KEY is not set' if ENV['ANTHROPIC_API_KEY'].nil?
+raise 'YANN_SERVER_SECRET is not set' if ENV['YANN_SERVER_SECRET'].nil?
 
 CACHE_TTL = 3600
 $cache = { data: nil, fetched_at: nil }
@@ -15,6 +16,12 @@ RubyLLM.configure do |config|
 end
 
 get '/' do
+  token = request.env['HTTP_X_SECRET_TOKEN'].to_s
+  unless Rack::Utils.secure_compare(token, ENV['YANN_SERVER_SECRET'])
+    content_type :json
+    halt 403, { error: 'Not authorized.' }.to_json
+  end
+
   if $cache[:data] && Time.now - $cache[:fetched_at] < CACHE_TTL
     content_type :json
     next $cache[:data]
@@ -23,14 +30,18 @@ get '/' do
   ariss_url = 'https://www.ariss.org/upcoming-sstv-events.html'
 
   html_file = begin
-    URI.parse(ariss_url).read
+    URI.parse(ariss_url).open(read_timeout: 10, open_timeout: 5).read
   rescue OpenURI::HTTPError, SocketError, Timeout::Error => e
-    halt 502, content_type(:json) && { error: "Failed to fetch ARISS data: #{e.message}" }.to_json
+    content_type :json
+    halt 502, { error: "Failed to fetch ARISS data: #{e.message}" }.to_json
   end
 
   html_doc = Nokogiri::HTML.parse(html_file)
   ariss_events_text = html_doc.search('h2 + div.paragraph').text.strip
-  halt 502, content_type(:json) && { error: 'Could not parse ARISS page — selector returned no content' }.to_json if ariss_events_text.empty?
+  if ariss_events_text.empty?
+    content_type :json
+    halt 502, { error: 'Could not parse ARISS page — selector returned no content' }.to_json
+  end
 
   prompt = <<~PROMPT
     You are a JSON API that extracts ISS SSTV event data from the ARISS website.
