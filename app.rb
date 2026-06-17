@@ -3,7 +3,7 @@ require 'sinatra'
 require 'ruby_llm'
 require 'open-uri'
 require "nokogiri"
-require 'dotenv/load'
+require 'dotenv/load' if ENV['RACK_ENV'] == 'development'
 
 # Configure RubyLLM with your API key
 RubyLLM.configure do |config|
