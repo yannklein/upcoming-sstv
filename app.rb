@@ -3,6 +3,7 @@ require 'sinatra'
 require 'ruby_llm'
 require 'open-uri'
 require "nokogiri"
+require 'dotenv/load'
 
 # Configure RubyLLM with your API key
 RubyLLM.configure do |config|
@@ -54,12 +55,12 @@ get '/' do
     #{ariss_events_text}
   PROMPT
 
-  client = RubyLLM::Client.new
+  chat = RubyLLM.chat
   
   # Send a prompt and get the response
-  response = client.chat(messages: [{ role: 'user', content: prompt }])
+  response = chat.ask prompt
 
   # Return the LLM response as text
   content_type :json
-  response.message.to_json
+  response.content
 end
