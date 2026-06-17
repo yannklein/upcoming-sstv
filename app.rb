@@ -6,6 +6,9 @@ require "nokogiri"
 require 'dotenv/load' if ENV['RACK_ENV'] == 'development'
 
 # Configure RubyLLM with your API key
+CACHE_TTL = 3600
+$cache = { data: nil, fetched_at: nil }
+
 RubyLLM.configure do |config|
   config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']
   config.default_model = 'claude-sonnet-4-6' 
