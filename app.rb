@@ -14,7 +14,6 @@ end
 # Define a simple route to handle AI requests
 get '/' do
   ariss_url = 'https://www.ariss.org/upcoming-sstv-events.html'
-  # Initialize the RubyLLM client for your preferred model (e.g., GPT-4)
 
   html_file = URI.parse(ariss_url).read
   html_doc = Nokogiri::HTML.parse(html_file)
