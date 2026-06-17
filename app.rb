@@ -16,6 +16,11 @@ end
 
 # Define a simple route to handle AI requests
 get '/' do
+  if $cache[:data] && Time.now - $cache[:fetched_at] < CACHE_TTL
+    content_type :json
+    next $cache[:data]
+  end
+
   ariss_url = 'https://www.ariss.org/upcoming-sstv-events.html'
 
   html_file = begin
@@ -69,6 +74,8 @@ get '/' do
   content_type :json
   begin
     JSON.parse(response.content)
+    $cache[:data] = response.content
+    $cache[:fetched_at] = Time.now
     response.content
   rescue JSON::ParserError
     halt 500, { error: 'LLM returned invalid JSON' }.to_json
